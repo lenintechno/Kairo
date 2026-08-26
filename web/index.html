@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kairo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #060B1F;
+    --bg-panel: #0E1636;
+    --bg-panel-2: #0A122C;
+    --blue-primary: #2B5CE6;
+    --blue-glow: rgba(59, 111, 255, 0.35);
+    --red-primary: #E4362A;
+    --red-glow: rgba(228, 54, 42, 0.4);
+    --chrome: #A9B4CC;
+    --text-primary: #EAF0FF;
+    --text-dim: #6B7BA3;
+    --line: rgba(140, 160, 210, 0.16);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% -10%, #10205C 0%, var(--bg-deep) 55%);
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow: hidden;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  .app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 20px 24px 16px;
+  }
+
+  /* ---------- HUD status bar ---------- */
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .hud-title {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hud-title b {
+    color: var(--text-primary);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: linear-gradient(90deg, var(--red-primary), var(--blue-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--blue-primary);
+    box-shadow: 0 0 8px var(--blue-primary);
+    animation: blink 2.4s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .hud-time {
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* ---------- Orb ---------- */
+  .orb-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    min-height: 0;
+  }
+
+  .orb-wrap {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+  }
+  .ring.r1 {
+    width: 100%;
+    height: 100%;
+    border-image: linear-gradient(135deg, var(--red-primary), transparent 40%, var(--blue-primary)) 1;
+    opacity: 0.6;
+  }
+  .ring.r2 { width: 82%; height: 82%; border-style: dashed; opacity: .5; animation: spin 40s linear infinite; border-color: var(--chrome); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .bars {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  .bar {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3px;
+    height: 14px;
+    background: var(--blue-primary);
+    border-radius: 2px;
+    transform-origin: 50% 96px;
+    opacity: 0.55;
+    transition: height .18s ease, opacity .18s ease, background .3s ease;
+  }
+  .bar:nth-child(odd) { background: var(--chrome); opacity: 0.4; }
+
+  .core {
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #1B2A5C 0%, #0A122C 70%);
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 0 30px var(--blue-glow),
+      inset 0 0 24px rgba(59,111,255,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow .3s ease, transform .2s ease;
+    animation: breathe 4.2s ease-in-out infinite;
+    z-index: 2;
+  }
+  .core:active { transform: scale(0.96); }
+  @keyframes breathe {
+    0%,100% { box-shadow: 0 0 0 1px var(--line), 0 0 22px var(--blue-glow), inset 0 0 20px rgba(59,111,255,0.08); }
+    50%     { box-shadow: 0 0 0 1px var(--line), 0 0 38px var(--blue-glow), inset 0 0 28px rgba(59,111,255,0.14); }
+  }
+
+  .mic-icon { width: 26px; height: 26px; color: var(--chrome); }
+
+  /* LISTENING = red (Optimus flame) */
+  .orb-wrap.listening .bar { background: var(--red-primary); opacity: 1; }
+  .orb-wrap.listening .core {
+    animation: pulse-red 1s ease-in-out infinite;
+  }
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 0 1px var(--red-primary), 0 0 40px var(--red-glow); }
+    50%     { box-shadow: 0 0 0 1px var(--red-primary), 0 0 60px var(--red-glow); }
+  }
+
+  /* SPEAKING = blue */
+  .orb-wrap.speaking .bar { background: var(--blue-primary); opacity: 1; }
+  .orb-wrap.speaking .core {
+    animation: pulse-blue 0.6s ease-in-out infinite;
+  }
+  @keyframes pulse-blue {
+    0%,100% { box-shadow: 0 0 0 1px var(--blue-primary), 0 0 40px var(--blue-glow); }
+    50%     { box-shadow: 0 0 0 1px var(--blue-primary), 0 0 60px var(--blue-glow); }
+  }
+
+  .status-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    min-height: 16px;
+  }
+  .status-line.listening { color: var(--red-primary); }
+  .status-line.speaking { color: var(--blue-primary); }
+
+  .transcript {
+    text-align: center;
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    min-height: 52px;
+    max-width: 420px;
+    padding: 0 12px;
+  }
+  .transcript .you { color: var(--text-dim); font-size: 14px; display: block; margin-bottom: 4px; }
+
+  /* ---------- Reminders ticker ---------- */
+  .reminders {
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--red-primary);
+    border-radius: 10px;
+    padding: 12px 16px 14px;
+    margin-top: 10px;
+  }
+  .reminders-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .reminders-head span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+  }
+  .reminders-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--blue-primary);
+  }
+  .r-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .r-item:first-of-type { border-top: none; }
+  .r-item .marker { color: var(--red-primary); font-family: 'JetBrains Mono', monospace; }
+  .r-item .txt { flex: 1; color: var(--text-primary); }
+  .r-item .time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .r-empty { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); padding: 4px 0; }
+
+  .hint {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="hud">
+    <div class="hud-title"><span class="status-dot"></span><b>KAIRO</b> <span class="mono" id="model-tag">/ READY</span></div>
+    <div class="hud-time mono" id="clock">--:--</div>
+  </div>
+
+  <div class="orb-stage">
+    <div class="orb-wrap" id="orbWrap">
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="bars" id="bars"></div>
+      <div class="core" id="core">
+        <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+          <path d="M19 11a7 7 0 0 1-14 0"/>
+          <path d="M12 18v3"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="status-line" id="statusLine">tap to talk</div>
+    <div class="transcript" id="transcript">Ask me to set a reminder, take a note, or just talk.</div>
+  </div>
+
+  <div class="reminders">
+    <div class="reminders-head">
+      <span>REMINDERS</span>
+      <span class="reminders-count mono" id="rCount">0 pending</span>
+    </div>
+    <div id="rList">
+      <div class="r-empty">no reminders yet — try "remind me to submit my assignment tomorrow at 9am"</div>
+    </div>
+  </div>
+
+  <div class="hint">SPACE TO TALK &nbsp;·&nbsp; CHROME / EDGE ONLY</div>
+</div>
+
+<script>
+  // ---------- clock ----------
+  function tick() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  tick(); setInterval(tick, 1000 * 30);
+
+  // ---------- build radial bars ----------
+  const bars = document.getElementById('bars');
+  const BAR_COUNT = 28;
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const angle = (360 / BAR_COUNT) * i;
+    bar.style.transform = `translate(-50%, -50%) rotate(${angle}deg) translateY(-96px)`;
+    bar.dataset.baseHeight = 12 + (i % 3) * 4;
+    bar.style.height = bar.dataset.baseHeight + 'px';
+    bars.appendChild(bar);
+  }
+  const barEls = Array.from(bars.children);
+
+  function animateBars(mode) {
+    barEls.forEach((bar) => {
+      if (mode === 'idle') {
+        bar.style.height = bar.dataset.baseHeight + 'px';
+      } else {
+        const h = 10 + Math.random() * 26;
+        bar.style.height = h + 'px';
+      }
+    });
+  }
+  let animLoop = null;
+  function setMode(mode) {
+    orbWrap.classList.remove('listening', 'speaking');
+    statusLine.classList.remove('listening', 'speaking');
+    clearInterval(animLoop);
+    if (mode === 'listening') {
+      orbWrap.classList.add('listening');
+      statusLine.classList.add('listening');
+      animLoop = setInterval(() => animateBars('listening'), 120);
+      statusLine.textContent = 'listening...';
+    } else if (mode === 'speaking') {
+      orbWrap.classList.add('speaking');
+      statusLine.classList.add('speaking');
+      animLoop = setInterval(() => animateBars('speaking'), 140);
+      statusLine.textContent = 'speaking...';
+    } else {
+      animateBars('idle');
+      statusLine.textContent = 'tap to talk';
+    }
+  }
+
+  // ---------- elements ----------
+  const orbWrap = document.getElementById('orbWrap');
+  const core = document.getElementById('core');
+  const statusLine = document.getElementById('statusLine');
+  const transcriptEl = document.getElementById('transcript');
+  const rList = document.getElementById('rList');
+  const rCount = document.getElementById('rCount');
+
+  setMode('idle');
+
+  // ---------- reminders state (client-side demo; swap for real backend later) ----------
+  let reminders = [];
+  function renderReminders() {
+    if (reminders.length === 0) {
+      rList.innerHTML = '<div class="r-empty">no reminders yet — try "remind me to submit my assignment tomorrow at 9am"</div>';
+      rCount.textContent = '0 pending';
+      return;
+    }
+    rCount.textContent = reminders.length + ' pending';
+    rList.innerHTML = reminders.map(r =>
+      `<div class="r-item"><span class="marker">›</span><span class="txt">${r.text}</span><span class="time mono">${r.time}</span></div>`
+    ).join('');
+  }
+  renderReminders();
+
+  // Poll /reminders/due for proactive notifications
+  async function pollDueReminders() {
+    try {
+      const res = await fetch('/reminders/due');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.reminders && data.reminders.length > 0) {
+        for (const r of data.reminders) {
+          // Check if we've already shown this reminder
+          if (!reminders.some(existing => existing.id === r.reminder_id)) {
+            reminders.push({ id: r.reminder_id, text: r.text, time: new Date(r.due_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            renderReminders();
+            // Speak the reminder
+            speak(`Reminder: ${r.text}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to poll reminders:', e);
+    }
+  }
+  setInterval(pollDueReminders, 10000); // every 10 seconds
+
+  // ---------- speech recognition (STT) ----------
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizing = false;
+  let recognizer = null;
+
+  if (SpeechRecognition) {
+    recognizer = new SpeechRecognition();
+    recognizer.lang = 'en-US';
+    recognizer.interimResults = false;
+    recognizer.maxAlternatives = 1;
+
+    recognizer.onstart = () => { recognizing = true; setMode('listening'); };
+    recognizer.onerror = () => { recognizing = false; setMode('idle'); };
+    recognizer.onend = () => { recognizing = false; if (!orbWrap.classList.contains('speaking')) setMode('idle'); };
+
+    recognizer.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      transcriptEl.innerHTML = `<span class="you">you said</span>${text}`;
+      handleMessage(text);
+    };
+  } else {
+    statusLine.textContent = 'speech api unsupported';
+  }
+
+  core.addEventListener('click', () => {
+    if (!recognizer) return;
+    if (recognizing) { recognizer.stop(); return; }
+    try { recognizer.start(); } catch (e) {}
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !recognizing && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      core.click();
+    }
+  });
+
+  // ---------- text-to-speech ----------
+  function speak(text) {
+    if (!window.speechSynthesis) return;
+    setMode('speaking');
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 1.02;
+    utter.onend = () => setMode('idle');
+    speechSynthesis.speak(utter);
+  }
+
+  // ---------- real backend integration ----------
+  async function handleMessage(text) {
+    transcriptEl.innerHTML = `<span class="you">you said</span>${text}`;
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const reply = data.reply;
+
+      setTimeout(() => {
+        transcriptEl.innerHTML += `<br><br>${reply}`;
+        speak(reply);
+      }, 400);
+    } catch (e) {
+      console.error('Chat error:', e);
+      const errorMsg = 'Sorry, I encountered an error. Please try again.';
+      setTimeout(() => {
+        transcriptEl.innerHTML += `<br><br>${errorMsg}`;
+        speak(errorMsg);
+      }, 400);
+    }
+  }
+</script>
+
+</body>
+</html>
